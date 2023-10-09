@@ -3,13 +3,18 @@ use piston_window::{
     WindowSettings,
     OpenGL,
     EventLoop,
+    Key,
 };
 use sdl2_window::Sdl2Window;
+use std::collections::BTreeMap;
+
 mod life_cell;
 use life_cell::*;
 
 mod direction;
 use direction::*;
+mod input_role;
+use input_role::*;
 
 mod bgchar_data;
 mod bgpal_data;
@@ -32,15 +37,15 @@ pub struct DisplayInfo {
     pub f_count: i32,
 }
 
-const WORLD_SIZE: (usize, usize) = (128, 128);
+const WORLD_SIZE: (usize, usize) = (512, 512);
 
 const FULL_SCREEN: bool = false;
 const VM_RECT_SIZE: (i32, i32) = (128 * PATTERN_SIZE as i32, 120 * PATTERN_SIZE as i32);
 const ROTATION: Direction = Direction::Normal;
 const PIXEL_SCALE: i32 = 1;
 const WINDOW_MARGIN: i32 = 0;
-const BG0_RECT_SIZE: (i32, i32) = (128, 128);
-const BG1_RECT_SIZE: (i32, i32) = (128, 128);
+const BG0_RECT_SIZE: (i32, i32) = (128, 120);
+const BG1_RECT_SIZE: (i32, i32) = (WORLD_SIZE.0 as i32, WORLD_SIZE.1 as i32);
 
 fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -100,6 +105,37 @@ fn main() {
         }
     };
 
+    let mut keyboard_map: BTreeMap<piston_window::Key, Vec<_>> = BTreeMap::new();
+    {
+        let key_set_list = [
+            (Key::D1,    InputRole::Progress1),
+            (Key::D2,    InputRole::Progress2),
+            (Key::D3,    InputRole::Progress4),
+            (Key::D4,    InputRole::Progress8),
+            (Key::P,     InputRole::Pause),
+            (Key::O,     InputRole::OneTick),
+            (Key::H,     InputRole::Home),
+            (Key::Z,     InputRole::Button0),
+            (Key::Space, InputRole::Button0),
+            (Key::W,     InputRole::Up),
+            (Key::D,     InputRole::Right),
+            (Key::S,     InputRole::Down),
+            (Key::A,     InputRole::Left),
+            (Key::Up,    InputRole::Up),
+            (Key::Right, InputRole::Right),
+            (Key::Down,  InputRole::Down),
+            (Key::Left,  InputRole::Left),
+        ];
+        for key_set in key_set_list {
+            if let Some(role_list) = keyboard_map.get_mut(&key_set.0) {
+                role_list.push(key_set.1);
+            } else {
+                keyboard_map.insert(key_set.0, vec![key_set.1]);
+            }
+        }
+    }
+    let mut input_role_state = InputRoleState::default();
+
     let mut bg = {
         let mut bg0 = BgPlane::new(
             BG0_RECT_SIZE,
@@ -137,8 +173,53 @@ fn main() {
     }
 
     let mut g_count = 0;
+    let mut wait = 8;
+    let mut pause = false;
+    let mut one_tick = false;
+    let mut view_pos = BgPos {x:0, y:0};
+    input_role_state.clear_all();
     'mail_loop: loop {
-        if display_info.f_count % 4 == 0 {
+        let d = if input_role_state.get(InputRole::Button0).0 { 6 } else { 2 };
+        if input_role_state.get(InputRole::Left).0 {
+            view_pos.x -= d;
+        }
+        if input_role_state.get(InputRole::Right).0 {
+            view_pos.x += d;
+        }
+        if input_role_state.get(InputRole::Up).0 {
+            view_pos.y -= d;
+        }
+        if input_role_state.get(InputRole::Down).0 {
+            view_pos.y += d;
+        }
+        if input_role_state.get(InputRole::Home).1 & 0b1111 == 0b1000 {
+            view_pos.x = 0;
+            view_pos.y = 0;
+        }
+        if input_role_state.get(InputRole::Progress1).1 & 0b1111 == 0b1000 {
+            wait = 8;
+            pause = false;
+        }
+        if input_role_state.get(InputRole::Progress2).1 & 0b1111 == 0b1000 {
+            wait = 4;
+            pause = false;
+        }
+        if input_role_state.get(InputRole::Progress4).1 & 0b1111 == 0b1000 {
+            wait = 2;
+            pause = false;
+        }
+        if input_role_state.get(InputRole::Progress8).1 & 0b1111 == 0b1000 {
+            wait = 1;
+            pause = false;
+        }
+        if input_role_state.get(InputRole::Pause).1 & 0b1111 == 0b1000 {
+            pause = !pause;
+        }
+        if input_role_state.get(InputRole::OneTick).1 & 0b1111 == 0b1000 {
+            one_tick = true;
+        }
+        bg.1.set_view_pos(view_pos.x, view_pos.y);
+        if one_tick || !pause && display_info.f_count % wait == 0 {
             for y in 0..WORLD_SIZE.1 {
                 for x in 0..WORLD_SIZE.0 {
                     let cell = world.read_cell((x, y));
@@ -148,13 +229,23 @@ fn main() {
                     ;
                 }
             }
-            bg.0.set_cur_pos(1, 1)
+            bg.0.set_cur_pos(1, 2)
                 .put_string(&format!("Gen:{} Lives:{}  ", &g_count, &lives), Some(&CharAttributes::new(2, BgSymmetry::Normal)))
             ;
             lives += world.update_world();
             g_count += 1;
+            if one_tick {
+                one_tick = false;
+                pause = true;
+            }
         }
-        if wait_and_update::doing(&mut window, &mut bg, &mut display_info) { break 'mail_loop }
+        bg.0.set_cur_pos(1, 1)
+            .put_string(&format!("({}, {})", view_pos.x, view_pos.y), Some(&CharAttributes::new(3, BgSymmetry::Normal)))
+            .put_code_n(' ', 10)
+        ;
+        if wait_and_update::doing(&mut window, &mut bg, &mut display_info, &keyboard_map, &mut input_role_state) {
+             break 'mail_loop;
+        }
     }
     sdl_context.mouse().show_cursor(true);
 }

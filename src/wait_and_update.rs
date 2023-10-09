@@ -1,10 +1,10 @@
 use crate::{
     direction::*,
-    // input_role::*,
+    input_role::*,
     GameWindow,
     DisplayInfo,
 };
-// use std::collections::BTreeMap;
+use std::collections::BTreeMap;
 use piston_window::*;
 use bgsp_lib2::{
     bg_plane::*,
@@ -16,8 +16,8 @@ pub fn doing(
     // spr: &mut SpResources,
     bg: &mut (BgPlane, BgPlane),
     info: &mut DisplayInfo,
-    // keyboard_map: &BTreeMap<piston_window::Key, Vec<InputRole>>,
-    // input_role_state: &mut InputRoleState,
+    keyboard_map: &BTreeMap<piston_window::Key, Vec<InputRole>>,
+    input_role_state: &mut InputRoleState,
 ) -> bool {
     let mut texture_context = window.create_texture_context();
     let texture_settings = TextureSettings::new();
@@ -43,7 +43,6 @@ pub fn doing(
     */
 
     while let Some(event) = window.next() {
-    /*
         if let Some(Button::Keyboard(k)) = event.press_args() {
             if let Some(role_list) = keyboard_map.get(&k) {
                 for role in role_list { input_role_state.set_true(*role) }
@@ -54,9 +53,8 @@ pub fn doing(
                 for role in role_list { input_role_state.set_false(*role) }
             }
         }
-    */
         if let Event::Loop(Loop::Render(_)) = event {
-            // input_role_state.update_history();
+             input_role_state.update_history();
             let window_size = window.size();
             window.draw_2d(&event, |context, graphics, _device| {
                 let (vm_rect_width, vm_rect_height, pixel_scale, margin_2x) = (

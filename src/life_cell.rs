@@ -30,7 +30,7 @@ impl World {
         Self {
             size,
             grid: vec![Cell::default(); size.0 * size.1],
-            changes: Vec::with_capacity(size.0 * size.1),
+            changes: Vec::with_capacity(size.0 * size.1 / 8),
         }
     }
 
