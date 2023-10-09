@@ -1,8 +1,13 @@
 [package]
 name = "life-rs"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+sdl2 = "0.35"
+piston_window = "0.128"
+pistoncore-sdl2_window = "0.68"
+
+bgsp-lib2 = { path="../bgsp-lib2" }
