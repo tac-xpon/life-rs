@@ -16,21 +16,24 @@ impl CellState {
 
 #[derive(Default, Clone, Copy)]
 pub struct Cell {
-    pub live: CellState,
+    pub state: CellState,
     pub neighbours: i32,
 }
 
 pub struct World {
     size: (usize, usize),
+    linear_size: usize,
     grid: Vec<Cell>,
     changes: Vec<usize>,
 }
 impl World {
     pub fn new(size: (usize, usize)) -> Self {
+        let linear_size = size.0 * size.1;
         Self {
             size,
-            grid: vec![Cell::default(); size.0 * size.1],
-            changes: Vec::with_capacity(size.0 * size.1 / 8),
+            linear_size,
+            grid: vec![Cell::default(); linear_size],
+            changes: Vec::with_capacity(linear_size / 8),
         }
     }
 
@@ -40,26 +43,25 @@ impl World {
     }
 
     fn change_cell(&mut self, linear_pos: usize) -> i32 {
-        let linear_size = self.size.0 * self.size.1;
-        self.grid[linear_pos].live = self.grid[linear_pos].live.invert();
-        let d = if self.grid[linear_pos].live == CellState::Live { 1 } else { -1 };
-        let temp_pos_b = linear_pos + linear_size;
+        self.grid[linear_pos].state = self.grid[linear_pos].state.invert();
+        let d = if self.grid[linear_pos].state == CellState::Live { 1 } else { -1 };
+        let temp_pos_b = linear_pos + self.linear_size;
         let temp_pos_a = temp_pos_b - self.size.0;
         let temp_pos_c = temp_pos_b + self.size.0;
-        self.grid[(temp_pos_a - 1) % linear_size].neighbours += d;
-        self.grid[(temp_pos_a    ) % linear_size].neighbours += d;
-        self.grid[(temp_pos_a + 1) % linear_size].neighbours += d;
-        self.grid[(temp_pos_b - 1) % linear_size].neighbours += d;
-        self.grid[(temp_pos_b + 1) % linear_size].neighbours += d;
-        self.grid[(temp_pos_c - 1) % linear_size].neighbours += d;
-        self.grid[(temp_pos_c    ) % linear_size].neighbours += d;
-        self.grid[(temp_pos_c + 1) % linear_size].neighbours += d;
+        self.grid[(temp_pos_a - 1) % self.linear_size].neighbours += d;
+        self.grid[(temp_pos_a    ) % self.linear_size].neighbours += d;
+        self.grid[(temp_pos_a + 1) % self.linear_size].neighbours += d;
+        self.grid[(temp_pos_b - 1) % self.linear_size].neighbours += d;
+        self.grid[(temp_pos_b + 1) % self.linear_size].neighbours += d;
+        self.grid[(temp_pos_c - 1) % self.linear_size].neighbours += d;
+        self.grid[(temp_pos_c    ) % self.linear_size].neighbours += d;
+        self.grid[(temp_pos_c + 1) % self.linear_size].neighbours += d;
         d
     }
 
     pub fn set_cell(&mut self, pos: (usize, usize), state: CellState) -> i32 {
         let linear_pos = (pos.0 % self.size.0) + (pos.1 % self.size.1) * self.size.0;
-        if self.grid[linear_pos].live != state {
+        if self.grid[linear_pos].state != state {
             self.change_cell(linear_pos)
         } else {
             0
@@ -69,7 +71,7 @@ impl World {
     pub fn update_world(&mut self) -> i32 {
         let mut growth = 0;
         for (linear_pos, cell) in self.grid.iter_mut().enumerate() {
-            if cell.live == CellState::Live {
+            if cell.state == CellState::Live {
                 match cell.neighbours {
                     2 | 3 => {},
                     _ => self.changes.push(linear_pos),
