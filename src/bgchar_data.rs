@@ -1,40 +1,17 @@
 use bgsp_lib2::bgsp_common::PATTERN_SIZE;
 
+pub const BG_PATTERN_TBL: [Option<(u32, u32, &[u64])>; 256] = {
+    let mut tbl: [Option<(u32, u32, &[u64])>; 256] = [None; 256];
+    tbl[0x00] = Some((1, 1, &BG_CHARS[0]));
+    let mut idx = 0;
+    while idx < BG_CHARS.len() {
+        tbl[0x20 + idx] = Some((1, 1, &BG_CHARS[idx]));
+        idx += 1;
+    }
+    tbl
+};
+
 pub const BG_CHARS: &[[u64; PATTERN_SIZE]] = &[
-    // 0x00 ~ 0x0f(0 ~ 15)
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    // 0x10 ~ 0x1f(16 ~ 31)
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
-    [0; PATTERN_SIZE],
     // 0x20 ~ 0x7f(32 ~ 127)
     [
         0x0000000000000000,

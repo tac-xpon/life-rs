@@ -40,7 +40,7 @@ pub struct DisplayInfo {
 const WORLD_SIZE: (usize, usize) = (512, 512);
 
 const FULL_SCREEN: bool = false;
-const VM_RECT_SIZE: (i32, i32) = (64 * PATTERN_SIZE as i32, 60 * PATTERN_SIZE as i32);
+const VM_RECT_SIZE: (i32, i32) = (120 * PATTERN_SIZE as i32, 120 * PATTERN_SIZE as i32);
 const ROTATION: Direction = Direction::Normal;
 const PIXEL_SCALE: i32 = 1;
 const WINDOW_MARGIN: i32 = 0;
@@ -140,7 +140,7 @@ fn main() {
         let mut bg0 = BgPlane::new(
             BG0_RECT_SIZE,
             VM_RECT_SIZE,
-            &bgchar_data::BG_CHARS,
+            &bgchar_data::BG_PATTERN_TBL,
             &bgpal_data::COLOR_TBL,
             display_info.pixel_scale,
         );
@@ -149,7 +149,7 @@ fn main() {
         let mut bg1 = BgPlane::new(
             BG1_RECT_SIZE,
             VM_RECT_SIZE,
-            &bgchar_data::BG_CHARS,
+            &bgchar_data::BG_PATTERN_TBL,
             &bgpal_data::COLOR_TBL,
             display_info.pixel_scale,
         );
