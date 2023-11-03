@@ -12,6 +12,7 @@ impl Default for Direction {
     }
 }
 
+#[allow(dead_code)]
 impl Direction {
     #[allow(non_upper_case_globals)]
     pub const Normal: Self = Self::Up;

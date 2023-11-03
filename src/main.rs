@@ -1,11 +1,3 @@
-use piston_window::{
-    PistonWindow,
-    WindowSettings,
-    OpenGL,
-    EventLoop,
-    Key,
-};
-use sdl2_window::Sdl2Window;
 use std::collections::BTreeMap;
 
 mod life_cell;
@@ -13,11 +5,15 @@ use life_cell::*;
 
 mod direction;
 use direction::*;
+
 mod input_role;
 use input_role::*;
 
 mod bgchar_data;
 mod bgpal_data;
+
+mod game_window;
+use game_window::*;
 
 mod wait_and_update;
 
@@ -25,17 +21,6 @@ use bgsp_lib2::{
     bgsp_common::*,
     bg_plane::*,
 };
-
-pub type GameWindow = PistonWindow<Sdl2Window>;
-
-pub struct DisplayInfo {
-    pub full_screen: bool,
-    pub vm_rect_size: (i32, i32),
-    pub rotation: Direction,
-    pub pixel_scale: i32,
-    pub margin: i32,
-    pub f_count: i32,
-}
 
 const WORLD_SIZE: (usize, usize) = (512, 512);
 
@@ -50,81 +35,35 @@ const BG1_RECT_SIZE: (i32, i32) = (WORLD_SIZE.0 as i32, WORLD_SIZE.1 as i32);
 fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
-    let mut window: GameWindow;
-    let mut display_info = {
-        let full_screen = FULL_SCREEN;
-        let vm_rect_size = VM_RECT_SIZE;
-        let rotation = ROTATION;
-        let pixel_scale = PIXEL_SCALE;
-        let margin = WINDOW_MARGIN;
-        let view_rect = {
-            let (width, height) = (vm_rect_size.0 * pixel_scale, vm_rect_size.1 * pixel_scale);
-            match rotation {
-                Direction::Up    | Direction::Down => (width, height),
-                Direction::Right | Direction::Left => (height, width),
-            }
-        };
-
-        window = {
-            const OPENGL_VER: OpenGL = OpenGL::V3_2;
-            let window_title = format!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-            let window_rect_size = if full_screen {
-                [8192, 8192]
-            } else {
-                [(view_rect.0 + margin * 2) as u32, (view_rect.1 + margin * 2) as u32]
-            };
-            let window_setting = WindowSettings::new(&window_title, window_rect_size)
-                .samples(0)
-                .fullscreen(full_screen)
-                .exit_on_esc(true)
-                .graphics_api(OpenGL::V3_2)
-                .vsync(true)
-                .resizable(false)
-                .decorated(true)
-                .controllers(true)
-            ;
-            let sdl2_window = Sdl2Window::with_subsystem(
-                video_subsystem,
-                &window_setting,
-            ).unwrap();
-            PistonWindow::new(OPENGL_VER, 0, sdl2_window)
-        };
-        window.set_max_fps(120);
-        window.set_ups(60);
-        window.set_ups_reset(0);
-        window.set_swap_buffers(true);
-        window.set_bench_mode(false);
-        window.set_lazy(false);
-        DisplayInfo {
-            full_screen,
-            vm_rect_size,
-            rotation,
-            pixel_scale,
-            margin,
-            f_count: 0,
-        }
-    };
+    let mut game_window = GameWindow::new(
+        video_subsystem,
+        FULL_SCREEN,
+        VM_RECT_SIZE,
+        ROTATION,
+        PIXEL_SCALE,
+        WINDOW_MARGIN,
+    );
 
     let mut keyboard_map: BTreeMap<piston_window::Key, Vec<_>> = BTreeMap::new();
     {
         let key_set_list = [
-            (Key::D1,    InputRole::Progress1),
-            (Key::D2,    InputRole::Progress2),
-            (Key::D3,    InputRole::Progress4),
-            (Key::D4,    InputRole::Progress8),
-            (Key::P,     InputRole::Pause),
-            (Key::O,     InputRole::OneTick),
-            (Key::H,     InputRole::Home),
-            (Key::Z,     InputRole::Button0),
-            (Key::Space, InputRole::Button0),
-            (Key::W,     InputRole::Up),
-            (Key::D,     InputRole::Right),
-            (Key::S,     InputRole::Down),
-            (Key::A,     InputRole::Left),
-            (Key::Up,    InputRole::Up),
-            (Key::Right, InputRole::Right),
-            (Key::Down,  InputRole::Down),
-            (Key::Left,  InputRole::Left),
+            (piston_window::Key::D1,    InputRole::Progress1),
+            (piston_window::Key::D2,    InputRole::Progress2),
+            (piston_window::Key::D3,    InputRole::Progress4),
+            (piston_window::Key::D4,    InputRole::Progress8),
+            (piston_window::Key::P,     InputRole::Pause),
+            (piston_window::Key::O,     InputRole::OneTick),
+            (piston_window::Key::H,     InputRole::Home),
+            (piston_window::Key::Z,     InputRole::Button0),
+            (piston_window::Key::Space, InputRole::Button0),
+            (piston_window::Key::W,     InputRole::Up),
+            (piston_window::Key::D,     InputRole::Right),
+            (piston_window::Key::S,     InputRole::Down),
+            (piston_window::Key::A,     InputRole::Left),
+            (piston_window::Key::Up,    InputRole::Up),
+            (piston_window::Key::Right, InputRole::Right),
+            (piston_window::Key::Down,  InputRole::Down),
+            (piston_window::Key::Left,  InputRole::Left),
         ];
         for key_set in key_set_list {
             if let Some(role_list) = keyboard_map.get_mut(&key_set.0) {
@@ -142,7 +81,7 @@ fn main() {
             VM_RECT_SIZE,
             &bgchar_data::BG_PATTERN_TBL,
             &bgpal_data::COLOR_TBL,
-            display_info.pixel_scale,
+            game_window.pixel_scale() as i32,
         );
         bg0.set_base_symmetry(BgSymmetry::Normal);
 
@@ -151,13 +90,15 @@ fn main() {
             VM_RECT_SIZE,
             &bgchar_data::BG_PATTERN_TBL,
             &bgpal_data::COLOR_TBL,
-            display_info.pixel_scale,
+            game_window.pixel_scale() as i32,
         );
         bg1.set_base_symmetry(BgSymmetry::Normal);
         (bg0, bg1)
     };
 
-    if display_info.full_screen { sdl_context.mouse().show_cursor(false) }
+    if game_window.full_screen() {
+        sdl_context.mouse().show_cursor(false);
+    }
 
     let mut world = World::new(WORLD_SIZE);
     let mut lives = 0;
@@ -238,7 +179,7 @@ fn main() {
             ;
             renderd = true;
         }
-        if one_tick || !pause && display_info.f_count % wait == 0 {
+        if one_tick || !pause && game_window.f_count() % wait == 0 {
             for _ in 0..g_span {
                 lives += world.update_world();
             }
@@ -254,7 +195,7 @@ fn main() {
             .put_string(&format!("({}, {})", view_pos.x, view_pos.y), Some(&CharAttributes::new(3, BgSymmetry::Normal)))
             .put_code_n(' ', 10)
         ;
-        if wait_and_update::doing(&mut window, &mut bg, &mut display_info, &keyboard_map, &mut input_role_state) {
+        if wait_and_update::doing(&mut game_window, &mut bg, &keyboard_map, &mut input_role_state) {
              break 'mail_loop;
         }
     }
